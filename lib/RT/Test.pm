@@ -1359,7 +1359,7 @@ sub import_gnupg_key {
     $key =~ s/\@/-at-/g;
     $key .= ".$type.key";
 
-    require RT::Crypt::GnuPG;
+    require RT::Crypt;
 
     # simple strategy find data/gnupg/keys, from the dir where test file lives
     # to updirs, try 3 times in total
@@ -1388,7 +1388,7 @@ sub lsign_gnupg_key {
     my $self = shift;
     my $key = shift;
 
-    require RT::Crypt::GnuPG;
+    require RT::Crypt;
 
     return RT::Crypt::GnuPG->CallGnuPG(
         Command     => '--lsign-key',
@@ -1408,7 +1408,7 @@ sub trust_gnupg_key {
     my $self = shift;
     my $key = shift;
 
-    require RT::Crypt::GnuPG;
+    require RT::Crypt;
 
     return RT::Crypt::GnuPG->CallGnuPG(
         Command     => '--edit-key',
