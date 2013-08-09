@@ -14,3 +14,16 @@ table.collection td:first-child, table.collection th:first-child {
 .collection-as-table .user a:visited {
     color: inherit;
 }
+
+.upgrade-history-parent .widget a {
+  display: inline-block;
+  margin: 0;
+  width: 20px;
+  background-image: url('../../../static/images/css/rollup-arrow.gif');
+  background-repeat: no-repeat;
+  background-position: center 0;
+  position: static;
+  top: 0.5em;
+  left: 1.2em;
+  padding: 7px 0 0 0;
+}
