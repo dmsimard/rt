@@ -1359,8 +1359,6 @@ sub import_gnupg_key {
     $key =~ s/\@/-at-/g;
     $key .= ".$type.key";
 
-    require RT::Crypt;
-
     # simple strategy find data/gnupg/keys, from the dir where test file lives
     # to updirs, try 3 times in total
     my $path = File::Spec->catfile( 'data', 'gnupg', 'keys' );
@@ -1388,8 +1386,6 @@ sub lsign_gnupg_key {
     my $self = shift;
     my $key = shift;
 
-    require RT::Crypt;
-
     return RT::Crypt::GnuPG->CallGnuPG(
         Command     => '--lsign-key',
         CommandArgs => [$key],
@@ -1407,8 +1403,6 @@ sub lsign_gnupg_key {
 sub trust_gnupg_key {
     my $self = shift;
     my $key = shift;
-
-    require RT::Crypt;
 
     return RT::Crypt::GnuPG->CallGnuPG(
         Command     => '--edit-key',
