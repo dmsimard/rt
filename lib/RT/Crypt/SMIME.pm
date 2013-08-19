@@ -58,6 +58,7 @@ with 'RT::Crypt::Role';
 use RT::Crypt;
 use IPC::Run3 0.036 'run3';
 use RT::Util 'safe_run_child';
+use Crypt::OpenSSL::X509;
 
 =head1 NAME
 
@@ -72,11 +73,36 @@ You should start from reading L<RT::Crypt>.
     Set( %SMIME,
         Enable => 1,
         OpenSSL => '/usr/bin/openssl',
+        Keyring => '/opt/rt4/var/data/smime',
     );
 
 =head3 OpenSSL
 
 Path to openssl executable.
+
+=head3 Keyring
+
+Path to directory with keys and certificates for queues. Key and
+certificates should be stored in a PEM file named, e.g.,
+F<email.address@example.com.pem>.  See L</Keyring configuration>.
+
+=head2 Keyring configuration
+
+RT looks for keys in the directory configured in the L</Keyring> option
+of the L<RT_Config/%SMIME>.  While public certificates are also stored
+on users, private SSL keys are only loaded from disk.  Keys and
+certificates should be concatenated, in in PEM format, in files named
+C<email.address@example.com.pem>, for example.
+
+These files need be readable by the web server user which is running
+RT's web interface; however, if you are running cronjobs or other
+utilities that access RT directly via API, and may generate
+encrypted/signed notifications, then the users you execute these scripts
+under must have access too.
+
+The keyring on disk will be checked before the user with the email
+address is examined.  If the file exists, it will be used in preference
+to the certificate on the user.
 
 =cut
 
@@ -304,7 +330,87 @@ sub GetKeysInfo {
         @_
     );
 
-    return (exit_code => 1);
+    my $email = $args{'Key'};
+    unless ( $email ) {
+        return (exit_code => 0); # unless $args{'Force'};
+    }
+
+    my $key = $self->GetKeyContent( %args );
+    return (exit_code => 0) unless $key;
+
+    return $self->GetCertificateInfo( Certificate => $key );
+}
+
+sub GetKeyContent {
+    my $self = shift;
+    my %args = ( Key => undef, @_ );
+
+    my $file = $self->CheckKeyring( %args );
+    return unless $file;
+    open my $fh, '<:raw', $file
+        or die "Couldn't open file '$file': $!";
+    my $key = do { local $/; readline $fh };
+    close $fh;
+    return $key;
+}
+
+sub CheckKeyring {
+    my $self = shift;
+    my %args = (
+        Key => undef,
+        @_,
+    );
+    my $keyring = RT->Config->Get('SMIME')->{'Keyring'};
+    return undef unless $keyring;
+
+    my $file = File::Spec->catfile( $keyring, $args{'Key'} .'.pem' );
+    return undef unless -f $file;
+
+    return $file;
+}
+
+sub GetCertificateInfo {
+    my $self = shift;
+    my %args = (
+        Certificate => undef,
+        @_,
+    );
+
+    my $cert = eval { Crypt::OpenSSL::X509->new_from_string( $args{Certificate} ) };
+    return ( exit_code => 1, stderr => "$@" ) unless $cert;
+
+    my %USER_MAP = (
+        Country          => 'countryName',
+        StateOrProvince  => 'stateOrProvinceName',
+        Organization     => 'organizationName',
+        OrganizationUnit => 'organizationalUnitName',
+        Name             => 'commonName',
+        EmailAddress     => 'emailAddress',
+    );
+    my $canonicalize = sub {
+        my $name = shift;
+        my %data;
+        for (keys %USER_MAP) {
+            my $v = $name->get_entry_by_long_type($USER_MAP{$_});
+            $data{$_} = $v ? $v->value : undef;
+        }
+        $data{String} = Email::Address->new( @data{'Name', 'EmailAddress'} )->format
+            if $data{EmailAddress};
+        return \%data;
+    };
+
+    my %data = (
+        Content         => $args{Certificate},
+        TrustLevel      => 1,
+        Fingerprint     => $cert->fingerprint_sha1,
+        'Serial Number' => $cert->serial,
+        Created         => $self->ParseDate( $cert->notBefore ),
+        Expire          => $self->ParseDate( $cert->notAfter ),
+        Version         => sprintf("%d (0x%x)",hex($cert->version)+1, hex($cert->version)),
+        Issuer          => [ $canonicalize->( $cert->issuer_name ) ],
+        User            => [ $canonicalize->( $cert->subject_name ) ],
+    );
+    return ( exit_code => 0, info => [ \%data ], stderr => '' );
 }
 
 1;
