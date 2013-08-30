@@ -349,7 +349,8 @@ UPGRADE: foreach my $upgrade ( @{$upgrade_history->{$package}} ){
 </%perl>
     <tr class="oddline">
     <td class="upgrade-history-parent" id="parent-upgrade-history-<% $parent_id %>">
-    <span class="widget"><a href="#" onclick="return toggleClassElement('<% 'upgrade-history-' . $parent_id %>');"></a></span></td>
+      <span class="widget"><a href="#" onclick="toggle_upgrade_history(this, '.upgrade-history-' + <% $parent_id | n,j %>); return false";"></a></span>
+    </td>
 %       } else {
 <tr class="<% $tr_class %>">
 <td class="collection-as-table"></td>

@@ -30,17 +30,9 @@ function switchVisibility(id1, id2) {
     return false;
 }
 
-/* Show/hide with class */
-
-function toggleClassElement(className) {
-    jQuery("." + className).toggle();
-    if ( jQuery("." + className).is(":hidden") ){
-        jQuery("#parent-" + className).find("a").css("background-image", "url('../../../static/images/css/rolldown-arrow.gif')");
-    }
-    else{
-        jQuery("#parent-" + className).find("a").css("background-image", "url('../../../static/images/css/rollup-arrow.gif')");
-    }
-    return false;
+function toggle_upgrade_history(widget, selector) {
+    jQuery(selector).toggle();
+    jQuery(widget).toggleClass("rolled-up");
 }
 
 /* Classes */
